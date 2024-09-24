@@ -144,13 +144,14 @@ function Game() {
 
 
   return (
-    <div className="game">
-      <div className="wallet-info">
+    <div className="game-container">
+      <h1 className="game-title">Tic-Tac-Toe on Base</h1>
+      <div className="wallet-connect-container">
         <ConnectButton />
-        {isConnected && (
-          <p>Connected: {address.slice(0, 6)}...{address.slice(-4)}</p>
-        )}
       </div>
+      {isConnected && (
+        <p className="wallet-address">Connected: {address.slice(0, 6)}...{address.slice(-4)}</p>
+      )}
       {!gameId && (
         <div className="join-game">
           <input 
@@ -171,15 +172,15 @@ function Game() {
         </div>
       )}
       {gameId && (
-        <>
+        <div className="game-play">
           <Board squares={board} onClick={handleClick} />
           <div className="game-info">
-            <div>{status}</div>
+            <div className="status">{status}</div>
             <div>Your Symbol: {playerSymbol}</div>
             <div>Game ID: {gameId}</div>
             {gameOver && <button onClick={resetGame} className="reset-button">Play Again</button>}
           </div>
-        </>
+        </div>
       )}
     </div>
   );
