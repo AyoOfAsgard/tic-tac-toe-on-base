@@ -110,3 +110,13 @@ body {
   color: #333;
 }
 
+.error-message {
+  color: #ff0000;
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+.join-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}

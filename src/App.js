@@ -50,6 +50,7 @@ function Game() {
   const [status, setStatus] = useState('');
   const [inputGameId, setInputGameId] = useState('');
   const [gameOver, setGameOver] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const { address, isConnected } = useAccount();
 
@@ -115,16 +116,21 @@ function Game() {
   };
 
   const joinGame = () => {
+    setErrorMessage('');
     if (!isConnected) {
-      alert('Please connect your wallet first');
+      setErrorMessage('Please connect your wallet first');
       return;
     }
-    const newGameId = inputGameId || Math.random().toString(36).substr(2, 5);
-    console.log('Joining game:', newGameId, 'My ID:', socket.id);
-    setGameId(newGameId);
+    if (!inputGameId.trim()) {
+      setErrorMessage('Please enter a game ID');
+      return;
+    }
+    console.log('Joining game:', inputGameId, 'My ID:', socket.id);
+    setGameId(inputGameId);
     setGameOver(false);
-    socket.emit('joinGame', newGameId);
+    socket.emit('joinGame', inputGameId);
   };
+
 
   const resetGame = () => {
     setBoard(Array(9).fill(null));
@@ -151,10 +157,17 @@ function Game() {
             type="text" 
             value={inputGameId} 
             onChange={(e) => setInputGameId(e.target.value)}
-            placeholder="Enter game ID to start or join a game"
+            placeholder="Enter game ID"
             className="game-input"
           />
-          <button onClick={joinGame} className="join-button" disabled={!isConnected}>Join Game</button>
+          <button 
+            onClick={joinGame} 
+            className="join-button" 
+            disabled={!isConnected || !inputGameId.trim()}
+          >
+            Join Game
+          </button>
+          {errorMessage && <p className="error-message">{errorMessage}</p>}
         </div>
       )}
       {gameId && (
@@ -163,6 +176,7 @@ function Game() {
           <div className="game-info">
             <div>{status}</div>
             <div>Your Symbol: {playerSymbol}</div>
+            <div>Game ID: {gameId}</div>
             {gameOver && <button onClick={resetGame} className="reset-button">Play Again</button>}
           </div>
         </>
