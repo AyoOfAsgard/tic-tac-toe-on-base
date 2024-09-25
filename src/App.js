@@ -3,10 +3,15 @@ import io from 'socket.io-client';
 import './TicTacToe.css';
 import '@rainbow-me/rainbowkit/styles.css';
 import { getDefaultConfig, RainbowKitProvider, ConnectButton } from '@rainbow-me/rainbowkit';
-import { WagmiProvider, useAccount } from 'wagmi';
+import { WagmiProvider, useAccount, useBalance, useContractWrite, useWaitForTransactionReceipt } from 'wagmi';
 import { base } from 'wagmi/chains';
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { http } from 'wagmi';
+import { toast } from 'react-toastify'; 
+import 'react-toastify/dist/ReactToastify.css';
+import { parseEther } from 'ethers'; // Import parseEther directly
+
+
 
 
 const socket = io('http://localhost:4000');
@@ -51,8 +56,181 @@ function Game() {
   const [inputGameId, setInputGameId] = useState('');
   const [gameOver, setGameOver] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-
+  const [betAmount, setBetAmount] = useState('');
   const { address, isConnected } = useAccount();
+  const { data: balance } = useBalance({ address });
+
+  const { writeAsync: joinGame, data: joinData } = useContractWrite({
+    address: '0xcd89a5CBe5b3053DB7cF9A16b5b3668cD0AFf40C',
+    abi: [
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "string",
+            "name": "gameId",
+            "type": "string"
+          },
+          {
+            "indexed": false,
+            "internalType": "address",
+            "name": "player",
+            "type": "address"
+          }
+        ],
+        "name": "GameJoined",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "string",
+            "name": "gameId",
+            "type": "string"
+          },
+          {
+            "indexed": false,
+            "internalType": "address",
+            "name": "winner",
+            "type": "address"
+          }
+        ],
+        "name": "GameOver",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": false,
+            "internalType": "string",
+            "name": "gameId",
+            "type": "string"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint8",
+            "name": "position",
+            "type": "uint8"
+          }
+        ],
+        "name": "MoveMade",
+        "type": "event"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "string",
+            "name": "",
+            "type": "string"
+          }
+        ],
+        "name": "games",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "betAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "currentTurn",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bool",
+            "name": "isComplete",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "string",
+            "name": "gameId",
+            "type": "string"
+          }
+        ],
+        "name": "joinGame",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "string",
+            "name": "gameId",
+            "type": "string"
+          },
+          {
+            "internalType": "uint8",
+            "name": "position",
+            "type": "uint8"
+          }
+        ],
+        "name": "makeMove",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
+    ],
+    functionName: 'joinGame',
+  });
+
+  const { isLoading: isJoining, isSuccess: hasJoined } = useWaitForTransactionReceipt({
+    hash: joinData?.hash,
+  });
+
+  const handleJoinGame = async () => {
+    setErrorMessage('');
+    if (!isConnected) {
+      setErrorMessage('Please connect your wallet first');
+      return;
+    }
+    if (!inputGameId.trim()) {
+      setErrorMessage('Please enter a game ID');
+      return;
+    }
+    if (!betAmount || parseFloat(betAmount) <= 0) {
+      setErrorMessage('Please enter a valid bet amount');
+      return;
+    }
+    if (balance && parseFloat(betAmount) > parseFloat(balance.formatted)) {
+      setErrorMessage('Insufficient balance');
+      return;
+    }
+
+    try {
+      if (joinGame) {
+        const tx = await joinGame({
+          args: [inputGameId],
+          value: parseEther(betAmount),
+        });
+        console.log('Transaction submitted:', tx);
+        const receipt = await tx.wait();
+        console.log('Transaction receipt:', receipt);
+        setGameId(inputGameId);
+        setGameOver(false);
+        toast.success('Successfully joined the game!');
+        socket.emit('joinGame', inputGameId);
+      } else {
+        throw new Error('joinGame function is not available');
+      }
+    } catch (error) {
+      console.error('Error joining game:', error);
+      setErrorMessage(`Failed to join game: ${error.message}`);
+    }
+  };
+
+  
+
 
   useEffect(() => {
     socket.on('connect', () => {
@@ -109,26 +287,24 @@ function Game() {
     };
   }, [playerSymbol]);
 
+  useEffect(() => {
+    if (hasJoined) {
+      console.log('Successfully joined the game on the blockchain');
+      setGameId(inputGameId);
+      setGameOver(false);
+      toast.success('Successfully joined the game!');
+      socket.emit('joinGame', inputGameId);
+    }
+  }, [hasJoined, inputGameId]);
+
+  
+
+  
+
   const handleClick = (index) => {
     if (!isYourTurn || board[index] || gameOver) return;
     console.log('Making move', { gameId, index, myId: socket.id });
     socket.emit('makeMove', { gameId, index });
-  };
-
-  const joinGame = () => {
-    setErrorMessage('');
-    if (!isConnected) {
-      setErrorMessage('Please connect your wallet first');
-      return;
-    }
-    if (!inputGameId.trim()) {
-      setErrorMessage('Please enter a game ID');
-      return;
-    }
-    console.log('Joining game:', inputGameId, 'My ID:', socket.id);
-    setGameId(inputGameId);
-    setGameOver(false);
-    socket.emit('joinGame', inputGameId);
   };
 
 
@@ -161,12 +337,19 @@ function Game() {
             placeholder="Enter game ID"
             className="game-input"
           />
+          <input 
+            type="number" 
+            value={betAmount} 
+            onChange={(e) => setBetAmount(e.target.value)}
+            placeholder="Enter bet amount (ETH)"
+            className="game-input"
+          />
           <button 
-            onClick={joinGame} 
+            onClick={handleJoinGame} 
             className="join-button" 
-            disabled={!isConnected || !inputGameId.trim()}
+            disabled={!isConnected || !inputGameId.trim() || !betAmount || isJoining}
           >
-            Join Game
+            {isJoining ? 'Joining...' : 'Join Game'}
           </button>
           {errorMessage && <p className="error-message">{errorMessage}</p>}
         </div>
