@@ -10,9 +10,7 @@ import { http } from 'wagmi';
 import { toast } from 'react-toastify'; 
 import 'react-toastify/dist/ReactToastify.css';
 import { parseEther } from 'ethers'; // Import parseEther directly
-
-
-
+import TicTacToeABI from './artifacts/contracts/TicTacToe.sol/TicTacToe.json'; // Import the default export
 
 const socket = io('http://localhost:4000');
 
@@ -61,128 +59,21 @@ function Game() {
   const { data: balance } = useBalance({ address });
 
   const { writeAsync: joinGame, data: joinData } = useContractWrite({
-    address: '0xcd89a5CBe5b3053DB7cF9A16b5b3668cD0AFf40C',
-    abi: [
-      {
-        "anonymous": false,
-        "inputs": [
-          {
-            "indexed": false,
-            "internalType": "string",
-            "name": "gameId",
-            "type": "string"
-          },
-          {
-            "indexed": false,
-            "internalType": "address",
-            "name": "player",
-            "type": "address"
-          }
-        ],
-        "name": "GameJoined",
-        "type": "event"
-      },
-      {
-        "anonymous": false,
-        "inputs": [
-          {
-            "indexed": false,
-            "internalType": "string",
-            "name": "gameId",
-            "type": "string"
-          },
-          {
-            "indexed": false,
-            "internalType": "address",
-            "name": "winner",
-            "type": "address"
-          }
-        ],
-        "name": "GameOver",
-        "type": "event"
-      },
-      {
-        "anonymous": false,
-        "inputs": [
-          {
-            "indexed": false,
-            "internalType": "string",
-            "name": "gameId",
-            "type": "string"
-          },
-          {
-            "indexed": false,
-            "internalType": "uint8",
-            "name": "position",
-            "type": "uint8"
-          }
-        ],
-        "name": "MoveMade",
-        "type": "event"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "string",
-            "name": "",
-            "type": "string"
-          }
-        ],
-        "name": "games",
-        "outputs": [
-          {
-            "internalType": "uint256",
-            "name": "betAmount",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint8",
-            "name": "currentTurn",
-            "type": "uint8"
-          },
-          {
-            "internalType": "bool",
-            "name": "isComplete",
-            "type": "bool"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "string",
-            "name": "gameId",
-            "type": "string"
-          }
-        ],
-        "name": "joinGame",
-        "outputs": [],
-        "stateMutability": "payable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "string",
-            "name": "gameId",
-            "type": "string"
-          },
-          {
-            "internalType": "uint8",
-            "name": "position",
-            "type": "uint8"
-          }
-        ],
-        "name": "makeMove",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      }
-    ],
+    address: '0x427B8d44EDeeC72A63527C357Cbc17431d759445',
+    abi: TicTacToeABI.abi, // Access the 'abi' property from the imported object
     functionName: 'joinGame',
   });
+
+  const contractWrite = useContractWrite({
+    address: '0x427B8d44EDeeC72A63527C357Cbc17431d759445',
+    abi: TicTacToeABI.abi,
+    functionName: 'joinGame',
+  });
+  
+  console.log('Contract write hook:', contractWrite);
+
+  // Log the joinGame function to check if it's defined
+  console.log('joinGame function:', joinGame);
 
   const { isLoading: isJoining, isSuccess: hasJoined } = useWaitForTransactionReceipt({
     hash: joinData?.hash,
